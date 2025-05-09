@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/ # For uv
+pip-log.txt
+pip-delete-this-directory.txt
+.eggs/
+*.egg-info/
+*.egg
+dist/
+build/
+*.so
+*.log
+local_settings.py
+
+# macOS
+.DS_Store
+*.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
