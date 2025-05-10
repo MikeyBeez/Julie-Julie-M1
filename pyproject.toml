@@ -1,0 +1,10 @@
+[project]
+name = "julie-julie-m1"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "flask>=3.1.0",
+    "rumps>=0.4.0",
+]
