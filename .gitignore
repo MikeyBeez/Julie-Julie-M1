@@ -18,6 +18,14 @@ build/
 *.log
 local_settings.py
 
+# Julie Julie specific logs and debug files
+julie_julie_debug.log
+julie_julie*.log
+debug*.log
+*.debug.log
+logs/
+*.log.*
+
 # macOS
 .DS_Store
 *.AppleDouble
