@@ -173,6 +173,55 @@ Julie Julie understands a variety of commands, including:
 - **YouTube**: "YouTube cute cat videos" or "Play funny animals on YouTube"
 - **Help**: "What can you do?" or "Help"
 
+## Testing
+
+Julie Julie includes a comprehensive test suite that tests the core functionality without requiring actual voice input/output.
+
+### Running Tests
+
+1. **Install test dependencies** (if not already installed):
+```bash
+pip install pytest pytest-cov pytest-mock
+```
+
+2. **Run all tests**:
+```bash
+# Using the test runner
+python test_runner.py
+
+# Or directly with pytest
+python -m pytest tests/ -v
+```
+
+3. **Run specific test categories**:
+```bash
+# Unit tests only
+python test_runner.py --unit
+
+# Integration tests only
+python test_runner.py --integration
+
+# With coverage report
+python test_runner.py --coverage
+```
+
+### Test Categories
+
+- **Unit Tests**: Test individual command handlers (calculations, music, YouTube, etc.)
+- **Core Logic Tests**: Test main application logic (time, weather, command processing)
+- **API Tests**: Test Flask endpoints and HTTP communication
+- **Integration Tests**: Test complete workflows from HTTP request to response
+
+### Testing Strategy
+
+The tests use **mocking** to avoid actual voice output, web browsing, and external API calls:
+- Speech output (`say` commands) are mocked to prevent audio
+- Web browser opening is mocked to prevent unwanted windows
+- External APIs (weather, music) are mocked for consistent testing
+- Ollama integration is mocked to avoid AI service dependency
+
+See [TESTING.md](TESTING.md) for detailed testing documentation.
+
 ## Architecture
 
 Julie Julie consists of several components:
