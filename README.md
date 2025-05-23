@@ -1,6 +1,6 @@
 # Julie Julie
 
-A macOS voice assistant that lives in your menu bar, providing quick access to time, weather, web searches, and more.
+A macOS voice assistant that lives in your menu bar, providing quick access to time, weather, calculations, music control, web searches, and conversational AI via Ollama.
 
 ## Overview
 
@@ -10,6 +10,8 @@ Julie Julie is a voice-activated assistant for macOS that:
 - Gives spoken responses using macOS text-to-speech
 - Opens relevant websites when needed
 - Provides quick access to common tasks (time, weather, search)
+- Integrates with Spotify, Apple Music, and YouTube
+- Supports real-time streaming conversations via Ollama
 
 You can interact with Julie Julie through:
 1. Voice commands (triggered via macOS Voice Control)
@@ -20,10 +22,12 @@ You can interact with Julie Julie through:
 ## Current Status
 
 - ✅ Time queries - fully working
-- ⚠️ Weather queries - partially implemented
-- ⚠️ Web search - partially implemented
-- ⚠️ Wikipedia - partially implemented
-- ⚠️ YouTube - partially implemented
+- ✅ Weather queries - working with National Weather Service API
+- ✅ Calculations - working with calculation handler
+- ✅ Music control - Spotify and Apple Music integration
+- ✅ YouTube searches - fully implemented
+- ✅ Visualizer commands - working
+- ✅ Ollama integration - streaming AI conversations with real-time speech
 - ✅ Opening websites - working
 
 ## Installation
@@ -65,26 +69,35 @@ pip install -r requirements.txt
 5. Create the "Activate Julie Julie" shortcut:
    - Open the Shortcuts app
    - Create a new shortcut named "Activate Julie Julie"
+   - Add an "Ask for Text" action:
+     - Set a custom prompt (e.g., "What would you like Julie Julie to do?")
+     - Disable "Allow Multiline" to keep input focused on single commands
    - Add a "Run AppleScript" action
    - Paste the following AppleScript code:
      ```applescript
      on run {input, parameters}
-         -- Just get the input and send it directly
-         set serverURL to "http://127.0.0.1:58586/activate_listening"
-         
-         -- Convert input to text in the simplest way
+         -- Get the input text
          set userCommand to input as text
          
-         -- Send command to server with minimal processing
-         set curlResult to do shell script "curl -s -X POST " & serverURL & " -d 'text_command=" & userCommand & "'"
+         -- Set URL endpoint for sending commands  
+         set serverURL to "http://127.0.0.1:58586/command"
          
-         -- Return result
-         return "Sent to Julie Julie: " & userCommand
+         -- Execute the curl command to send the text command
+         try
+             set curlCommand to "curl -s -X POST " & serverURL & " -d 'text_command=" & userCommand & "'"
+             set curlResult to do shell script curlCommand
+             return "Sent to Julie Julie: " & userCommand
+         on error errMsg number errNum
+             return "Error: " & errMsg
+         end try
      end run
      ```
    - Save the shortcut
 
-   When using Voice Control, this shortcut will receive the voice command and forward it to Julie Julie.
+   When triggered (via Voice Control saying "Julie Julie" or manually), this shortcut will:
+   1. Show a text input dialog
+   2. Send the typed command to Julie Julie's `/command` endpoint
+   3. Julie Julie will process the command and provide spoken responses
 
 ## Usage
 
@@ -109,12 +122,20 @@ Julie Julie will appear in your menu bar, ready to respond to commands.
 
 ### Important Note on Voice Activation
 
-Using Voice Control with Julie Julie can create some interference challenges. The macOS `say` command (used for Julie Julie's responses) can sometimes be picked up by Voice Control, creating feedback loops.
+Julie Julie uses a text-based input system rather than direct speech recognition to avoid interference with Voice Control. The workflow is:
 
-Some tips to avoid issues:
-- Consider using Voice Control in "Commands Only" mode
-- Close the Shortcuts app before testing Julie Julie
-- You may need to say "Stop listening" before getting spoken responses
+1. **Voice Control Activation**: Say "Julie Julie" to trigger the shortcut
+2. **Text Input Dialog**: A dialog appears asking "What would you like Julie Julie to do?"
+3. **Type Your Command**: Enter your command as text (multiline disabled for focus)
+4. **Processing**: Julie Julie receives the command via the `/command` endpoint
+5. **Response**: Julie Julie speaks the response using macOS text-to-speech
+
+This approach avoids:
+- Speech recognition conflicts with Voice Control
+- Feedback loops from Julie Julie's spoken responses
+- Complex microphone management issues
+
+The macOS `say` command (used for Julie Julie's responses) can still sometimes be picked up by Voice Control, so you may need to say "Stop listening" after getting spoken responses.
 
 See [VOICE-CONTROL-CHALLENGES.md](VOICE-CONTROL-CHALLENGES.md) for detailed information on these challenges and workarounds.
 
@@ -177,19 +198,12 @@ Julie Julie runs a local HTTP server on port 58586. You can interact with it pro
   curl http://127.0.0.1:58586/
   ```
 
-- **Activate voice listening**:
-  ```bash
-  curl -X POST http://127.0.0.1:58586/activate_listening
-  ```
-
 - **Send a text command**:
-  ```bash
-  curl -X POST http://127.0.0.1:58586/activate_listening -d "text_command=What time is it?"
-  ```
-  or
   ```bash
   curl -X POST http://127.0.0.1:58586/command -d "text_command=What time is it?"
   ```
+
+Note: The primary interface is the `/command` endpoint which is used by the Shortcuts integration. Julie Julie processes text commands and responds with spoken output and/or opens relevant websites.
 
 ## Troubleshooting
 
@@ -204,9 +218,11 @@ If Julie Julie isn't working as expected:
 
 ### Common Issues
 
-- **Missing speech_recognition or PyAudio**: Run `pip install SpeechRecognition PyAudio`
-- **Authentication issues with Google Speech API**: Check your network connection
-- **Weather API not working**: Check connection to wttr.in service
+- **Shortcut not triggering**: Ensure Voice Control is enabled and the "Julie Julie" command is properly configured
+- **Text dialog not appearing**: Check that the Shortcuts app has necessary permissions
+- **Commands not processed**: Verify Julie Julie is running and the Flask server is active on port 58586
+- **No spoken responses**: Check that macOS text-to-speech (`say` command) is working
+- **Ollama integration issues**: Ensure Ollama is running locally with the deepseek-r1 model available
 
 ## Future Enhancements
 
