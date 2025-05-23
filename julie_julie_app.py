@@ -15,6 +15,8 @@ from handlers.youtube_browser import handle_youtube_command
 from handlers.apple_music_handler import handle_apple_music_command
 from handlers.spotify_handler import handle_spotify_command
 from handlers.visualizer_handler import handle_visualizer_command
+from handlers.radio_handler import handle_radio_command
+from handlers.audio_handler import handle_audio_command
 
 # --- Configuration ---
 APP_NAME = "Julie Julie"
@@ -294,6 +296,32 @@ def process_command_from_user(text_command):
             except Exception as e:
                 logger.error(f"Error during YouTube speech: {e}")
         return youtube_result
+                    
+    # Try radio handler
+    radio_result = handle_radio_command(text_command)
+    if radio_result:
+        # It's a radio command - speak immediately
+        spoken_response = radio_result["spoken_response"]
+        if spoken_response:
+            logger.info(f"Radio command: {spoken_response}")
+            try:
+                subprocess.run(["say", spoken_response], check=True)
+            except Exception as e:
+                logger.error(f"Error during radio speech: {e}")
+        return radio_result
+                    
+    # Try audio handler
+    audio_result = handle_audio_command(text_command)
+    if audio_result:
+        # It's an audio command - speak immediately
+        spoken_response = audio_result["spoken_response"]
+        if spoken_response:
+            logger.info(f"Audio command: {spoken_response}")
+            try:
+                subprocess.run(["say", spoken_response], check=True)
+            except Exception as e:
+                logger.error(f"Error during audio speech: {e}")
+        return audio_result
                     
     # Weather commands
     if "weather" in command_lower:

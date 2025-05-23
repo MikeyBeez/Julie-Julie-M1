@@ -25,6 +25,8 @@ You can interact with Julie Julie through:
 - ✅ Weather queries - working with National Weather Service API
 - ✅ Calculations - working with calculation handler
 - ✅ Music control - Spotify and Apple Music integration
+- ✅ Radio stations - Classical, Jazz, Rock, and NPR streaming
+- ✅ Audio control - Speaker switching and device listing
 - ✅ YouTube searches - fully implemented
 - ✅ Visualizer commands - working
 - ✅ Ollama integration - streaming AI conversations with real-time speech
@@ -167,10 +169,13 @@ Julie Julie understands a variety of commands, including:
 
 - **Time**: "What time is it?" or "What's the current time?"
 - **Weather**: "What's the weather like?" or "What's the weather in San Francisco?"
-- **Web Search**: "Search for chocolate chip cookie recipes"
-- **Information**: "Tell me about quantum physics" or "Who is Marie Curie?"
-- **Open Websites**: "Open github.com"
+- **Calculations**: "What's 15 times 23?" or "15% tip on $50"
+- **Music & Radio**: "Spotify music", "Classical radio", "Jazz music", "NPR"
+- **Audio Control**: "What speakers are available?", "Switch to Yamaha", "Use soundbar"
 - **YouTube**: "YouTube cute cat videos" or "Play funny animals on YouTube"
+- **Conversations**: "Tell me about quantum physics" or "Who is Marie Curie?"
+- **Web Search**: "Search for chocolate chip cookie recipes"
+- **Open Websites**: "Open github.com"
 - **Help**: "What can you do?" or "Help"
 
 ## Testing

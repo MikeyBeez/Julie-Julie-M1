@@ -12,6 +12,8 @@ from handlers.apple_music_handler import handle_apple_music_command
 from handlers.spotify_handler import handle_spotify_command
 from handlers.youtube_browser import handle_youtube_command
 from handlers.visualizer_handler import handle_visualizer_command
+from handlers.radio_handler import handle_radio_command
+from handlers.audio_handler import handle_audio_command
 
 class TestCalculationHandler(unittest.TestCase):
     """Test the calculation handler functionality."""
@@ -139,6 +141,111 @@ class TestVisualizerHandler(unittest.TestCase):
         """Test that non-visualizer commands return None."""
         result = handle_visualizer_command("what time is it")
         self.assertIsNone(result)
+
+class TestRadioHandler(unittest.TestCase):
+    """Test radio station handler."""
+    
+    @patch('webbrowser.open')
+    def test_classical_radio(self, mock_browser):
+        """Test classical radio command."""
+        result = handle_radio_command("classical radio")
+        self.assertIsNotNone(result)
+        self.assertIn("spoken_response", result)
+        self.assertIn("Playing", result["spoken_response"])
+        mock_browser.assert_called_once()
+    
+    @patch('webbrowser.open')
+    def test_jazz_radio(self, mock_browser):
+        """Test jazz radio command."""
+        result = handle_radio_command("jazz music")
+        self.assertIsNotNone(result)
+        self.assertIn("jazz", result["spoken_response"].lower())
+        mock_browser.assert_called_once()
+    
+    @patch('webbrowser.open')
+    def test_rock_radio(self, mock_browser):
+        """Test rock radio command."""
+        result = handle_radio_command("rock radio")
+        self.assertIsNotNone(result)
+        self.assertIn("Playing", result["spoken_response"])
+        mock_browser.assert_called_once()
+    
+    @patch('webbrowser.open')
+    def test_npr_radio(self, mock_browser):
+        """Test NPR radio command."""
+        result = handle_radio_command("npr")
+        self.assertIsNotNone(result)
+        self.assertIn("NPR", result["spoken_response"])
+        mock_browser.assert_called_once()
+    
+    @patch('webbrowser.open')
+    def test_news_radio(self, mock_browser):
+        """Test news radio command."""
+        result = handle_radio_command("news")
+        self.assertIsNotNone(result)
+        self.assertIn("NPR", result["spoken_response"])
+        mock_browser.assert_called_once()
+    
+    def test_radio_station_list(self):
+        """Test listing available radio stations."""
+        result = handle_radio_command("what radio stations do you have")
+        self.assertIsNotNone(result)
+        self.assertIn("classical", result["spoken_response"].lower())
+        self.assertIn("jazz", result["spoken_response"].lower())
+        self.assertIn("rock", result["spoken_response"].lower())
+        self.assertIn("npr", result["spoken_response"].lower())
+    
+    def test_non_radio_command(self):
+        """Test that non-radio commands return None."""
+        result = handle_radio_command("what time is it")
+        self.assertIsNone(result)
+
+class TestAudioHandler(unittest.TestCase):
+    """Test audio device switching handler."""
+    
+    @patch('subprocess.run')
+    def test_list_audio_devices(self, mock_subprocess):
+        """Test listing available audio devices."""
+        # Mock system_profiler output
+        mock_subprocess.return_value = MagicMock(
+            returncode=0,
+            stdout="Built-in Output:\nBluetooth Device:\nHDMI Output:"
+        )
+        
+        result = handle_audio_command("what speakers are available")
+        self.assertIsNotNone(result)
+        self.assertIn("Available audio devices", result["spoken_response"])
+    
+    @patch('subprocess.run')
+    def test_switch_to_speaker(self, mock_subprocess):
+        """Test switching to a specific speaker."""
+        mock_subprocess.return_value = MagicMock(returncode=0)
+        
+        result = handle_audio_command("switch to yamaha")
+        self.assertIsNotNone(result)
+        self.assertIn("spoken_response", result)
+    
+    def test_non_audio_command(self):
+        """Test that non-audio commands return None."""
+        result = handle_audio_command("what time is it")
+        self.assertIsNone(result)
+    
+    @patch('subprocess.run')
+    def test_audio_device_patterns(self, mock_subprocess):
+        """Test various audio command patterns."""
+        mock_subprocess.return_value = MagicMock(returncode=0, stdout="")
+        
+        commands = [
+            "list audio devices",
+            "show speakers", 
+            "what sound devices",
+            "switch to soundbar",
+            "use bluetooth"
+        ]
+        
+        for command in commands:
+            result = handle_audio_command(command)
+            self.assertIsNotNone(result, f"Failed for command: {command}")
 
 if __name__ == '__main__':
     unittest.main()
