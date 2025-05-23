@@ -32,6 +32,7 @@ You can interact with Julie Julie through:
 - ✅ Ollama integration - streaming AI conversations with real-time speech
 - ✅ Opening websites - working
 - ✅ **Text-to-Speech**: Google Cloud TTS with automatic fallback to macOS say
+- ✅ **Ollama Auto-Start**: Automatically starts Ollama service when needed for AI conversations
 
 ## Installation
 
@@ -171,6 +172,28 @@ This provides a simple terminal interface where you can type:
 Julie Julie what time is it stop
 ```
 
+### Advanced Features
+
+#### AI Model Management
+
+Julie Julie can manage multiple Ollama models and switch between them:
+
+- **"List models"** - Shows all downloaded models and current selection
+- **"Use [model name]"** - Switch to a specific model (e.g., "Use llama3", "Use codellama")
+- **"Pull model"** - Download the currently selected model
+- **"Ollama status"** - Check service status and current model
+
+The system supports partial model name matching, so "Use llama" will match "llama3.2" if it's the only llama model available.
+
+#### Text-to-Speech Options
+
+Julie Julie supports both Google Cloud TTS (higher quality) and macOS say command (always available):
+
+- **"Use Google voice"** - Switch to Google Cloud TTS
+- **"Use local voice"** - Switch to macOS say command  
+- **"TTS status"** - Check current TTS configuration
+- **"Test voice"** - Test the current TTS system
+
 ### Command Examples
 
 Julie Julie understands a variety of commands, including:
@@ -185,6 +208,8 @@ Julie Julie understands a variety of commands, including:
 - **Web Search**: "Search for chocolate chip cookie recipes"
 - **Open Websites**: "Open github.com"
 - **TTS Control**: "Use Google voice", "Switch to local voice", "TTS status", "Test voice"
+- **Voice Control**: "Stop listening", "Start listening", "Voice Control status", "Enable auto manage"
+- **Ollama Control**: "Start Ollama", "Stop Ollama", "Ollama status", "Enable auto start", "List models", "Use llama3"
 - **Help**: "What can you do?" or "Help"
 
 ## Testing

@@ -18,6 +18,9 @@ from handlers.visualizer_handler import handle_visualizer_command
 from handlers.radio_handler import handle_radio_command
 from handlers.audio_handler import handle_audio_command
 from handlers.tts_handler import speak_text, handle_tts_command
+from handlers.ollama_manager import ensure_ollama_available, handle_ollama_command, cleanup_ollama, ollama_manager
+from handlers.voice_control_manager import handle_voice_control_command, restart_voice_control_after_response
+from utils.logging_utils import setup_colored_logging, print_startup_banner
 
 # --- Configuration ---
 APP_NAME = "Julie Julie"
@@ -28,25 +31,18 @@ LOG_FILE = os.path.expanduser("~/Library/Logs/JulieJulie/julie_julie.log")
 
 # --- Setup Logging ---
 def setup_logging():
-    log_dir = os.path.dirname(LOG_FILE)
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    logger = setup_colored_logging(APP_NAME, LOG_FILE)
     
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(LOG_FILE),
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
+    # Suppress verbose logging from werkzeug and urllib3
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
+    logging.getLogger('urllib3.connectionpool').setLevel(logging.WARNING)
     
-    logger = logging.getLogger('julie_julie')
-    print("=" * 80)
-    print(f"Starting {APP_NAME} v{APP_VERSION}")
-    print("=" * 80)
-    
+    print_startup_banner(APP_NAME, APP_VERSION)
     return logger
+
+# Global state for tracking if Julie Julie is currently speaking
+is_speaking = False
+is_processing = False
 
 logger = setup_logging()
 
@@ -134,14 +130,22 @@ def handle_ollama_query(user_query):
     try:
         logger.info(f"Sending streaming query to Ollama: {user_query}")
         
+        # Ensure Ollama is available before attempting connection
+        if not ensure_ollama_available():
+            return {
+                "spoken_response": "I'm having trouble starting the AI service. Please check if Ollama is installed.",
+                "opened_url": None,
+                "additional_context": "Ollama service unavailable"
+            }
+        
         ollama_url = "http://localhost:11434/api/generate"
         payload = {
-            "model": "deepseek-r1",
-            "prompt": f"You are Julie Julie, a friendly and helpful voice assistant. Respond naturally and conversationally. Keep your response brief and spoken-friendly (1-3 sentences). User says: {user_query}",
+            "model": ollama_manager.model_name,  # Use current model
+            "prompt": f"You are Julie Julie, a helpful voice assistant. Give very brief, direct answers - usually just 1-2 sentences. Be conversational but concise. Question: {user_query}",
             "stream": True,  # Enable streaming
             "options": {
                 "temperature": 0.7,
-                "max_tokens": 100
+                "max_tokens": 50  # Limit response length
             }
         }
         
@@ -171,8 +175,8 @@ def handle_ollama_query(user_query):
                                         
                                         if complete_sentence:
                                             logger.info(f"Speaking sentence: {complete_sentence}")
-                                            # Speak the sentence immediately
-                                            speak_text(complete_sentence)
+                                            # Speak the sentence immediately - suppress any stdout
+                                            result = speak_text(complete_sentence)
                                         
                                         # Keep remainder for next sentence
                                         sentence_buffer = sentence_buffer[sentence_end:].strip()
@@ -183,7 +187,7 @@ def handle_ollama_query(user_query):
                             # Speak any remaining text
                             if sentence_buffer.strip():
                                 logger.info(f"Speaking final fragment: {sentence_buffer.strip()}")
-                                speak_text(sentence_buffer.strip())
+                                result = speak_text(sentence_buffer.strip())
                             break
                             
                     except json.JSONDecodeError:
@@ -210,7 +214,19 @@ def handle_ollama_query(user_query):
         }
 
 # --- Core Logic ---
+def speak_response(result):
+    """Helper function to speak a response."""
+    global is_speaking
+    spoken_response = result.get("spoken_response")
+    if spoken_response:
+        is_speaking = True
+        speak_text(spoken_response)
+        is_speaking = False
+    return result
+
 def process_command_from_user(text_command):
+    global is_processing
+    
     if not text_command:
         return {
             "spoken_response": "I didn't receive any command.",
@@ -218,122 +234,91 @@ def process_command_from_user(text_command):
             "additional_context": None
         }
     
-    logger.info(f"Processing command: {text_command}")
-    command_lower = text_command.lower().strip()
+    is_processing = True
     
-    # Try TTS handler first (for voice control commands)
-    tts_result = handle_tts_command(text_command)
-    if tts_result:
-        # It's a TTS command - speak immediately
-        spoken_response = tts_result["spoken_response"]
-        if spoken_response:
-            logger.info(f"TTS command: {spoken_response}")
-            speak_text(spoken_response)
-        return tts_result
-    
-    # Time commands
-    if any(word in command_lower for word in ["time", "clock"]):
-        result = handle_time_command()
-        # Speak time responses immediately since they're not streamed
-        spoken_response = result["spoken_response"]
-        if spoken_response:
-            speak_text(spoken_response)
-        return result
-    
-    # Try calculation handler first (for simple math)
-    calc_result = handle_calculation(text_command)
-    if calc_result:
-        # It's a calculation - speak immediately
-        spoken_response = calc_result["spoken_response"]
-        if spoken_response:
-            logger.info(f"Quick calculation: {spoken_response}")
-            speak_text(spoken_response)
-        return calc_result
+    try:
+        logger.info(f"Processing command: {text_command}")
+        command_lower = text_command.lower().strip()
         
-    # Try visualizer handler
-    viz_result = handle_visualizer_command(text_command)
-    if viz_result:
-        # It's a visualizer command - speak immediately
-        spoken_response = viz_result["spoken_response"]
-        if spoken_response:
-            logger.info(f"Visualizer command: {spoken_response}")
-            speak_text(spoken_response)
-        return viz_result
+        # Note: Voice Control management is now handled by the "slap it" shortcut
+        # No need to stop/start Voice Control here
         
-    # Try Spotify handler (for "Spotify" commands)
-    spotify_result = handle_spotify_command(text_command)
-    if spotify_result:
-        # It's a Spotify command - speak immediately
-        spoken_response = spotify_result["spoken_response"]
-        if spoken_response:
-            logger.info(f"Spotify command: {spoken_response}")
-            speak_text(spoken_response)
-        return spotify_result
+        # Try Voice Control commands
+        vc_result = handle_voice_control_command(text_command)
+        if vc_result:
+            return speak_response(vc_result)
             
-    # Try Apple Music handler (for "Apple" commands)
-    apple_result = handle_apple_music_command(text_command)
-    if apple_result:
-        # It's an Apple Music command - speak immediately
-        spoken_response = apple_result["spoken_response"]
-        if spoken_response:
-            logger.info(f"Apple Music command: {spoken_response}")
-            speak_text(spoken_response)
-        return apple_result
-                
-    # Try YouTube handler
-    youtube_result = handle_youtube_command(text_command)
-    if youtube_result:
-        # It's a YouTube command - speak immediately
-        spoken_response = youtube_result["spoken_response"]
-        if spoken_response:
-            logger.info(f"YouTube command: {spoken_response}")
-            speak_text(spoken_response)
-        return youtube_result
-                    
-    # Try radio handler
-    radio_result = handle_radio_command(text_command)
-    if radio_result:
-        # It's a radio command - speak immediately
-        spoken_response = radio_result["spoken_response"]
-        if spoken_response:
-            logger.info(f"Radio command: {spoken_response}")
-            speak_text(spoken_response)
-        return radio_result
-                    
-    # Try audio handler
-    audio_result = handle_audio_command(text_command)
-    if audio_result:
-        # It's an audio command - speak immediately
-        spoken_response = audio_result["spoken_response"]
-        if spoken_response:
-            logger.info(f"Audio command: {spoken_response}")
-            speak_text(spoken_response)
-        return audio_result
-                    
-    # Weather commands
-    if "weather" in command_lower:
-        # Extract location if mentioned
-        location = None
-        if " in " in command_lower:
-            location_part = command_lower.split(" in ", 1)[1]
-            location = location_part.replace("?", "").strip()
-        elif " for " in command_lower:
-            location_part = command_lower.split(" for ", 1)[1]
-            location = location_part.replace("?", "").strip()
+        # Try TTS handler (for voice control commands)
+        tts_result = handle_tts_command(text_command)
+        if tts_result:
+            return speak_response(tts_result)
         
-        result = handle_weather_command(location)
-        # Speak weather responses immediately since they're not streamed
-        spoken_response = result["spoken_response"]
-        if spoken_response:
-            logger.info(f"About to speak weather: '{spoken_response}'")
-            speak_text(spoken_response)
-            logger.info("Weather speech completed successfully")
-        return result
+        # Try Ollama manager commands
+        ollama_result = handle_ollama_command(text_command)
+        if ollama_result:
+            return speak_response(ollama_result)
+        
+        # Time commands
+        if any(word in command_lower for word in ["time", "clock"]):
+            result = handle_time_command()
+            return speak_response(result)
+        
+        # Try calculation handler first (for simple math)
+        calc_result = handle_calculation(text_command)
+        if calc_result:
+            return speak_response(calc_result)
+            
+        # Try visualizer handler
+        viz_result = handle_visualizer_command(text_command)
+        if viz_result:
+            return speak_response(viz_result)
+            
+        # Try Spotify handler (for "Spotify" commands)
+        spotify_result = handle_spotify_command(text_command)
+        if spotify_result:
+            return speak_response(spotify_result)
+                
+        # Try Apple Music handler (for "Apple" commands)
+        apple_result = handle_apple_music_command(text_command)
+        if apple_result:
+            return speak_response(apple_result)
                     
-    # Everything else goes to Ollama for conversation (streaming with real-time speech)
-    result = handle_ollama_query(text_command)
-    # Note: Ollama responses are already spoken during streaming
-    return result
+        # Try YouTube handler
+        youtube_result = handle_youtube_command(text_command)
+        if youtube_result:
+            return speak_response(youtube_result)
+                        
+        # Try radio handler
+        radio_result = handle_radio_command(text_command)
+        if radio_result:
+            return speak_response(radio_result)
+                        
+        # Try audio handler
+        audio_result = handle_audio_command(text_command)
+        if audio_result:
+            return speak_response(audio_result)
+                        
+        # Weather commands
+        if "weather" in command_lower:
+            # Extract location if mentioned
+            location = None
+            if " in " in command_lower:
+                location_part = command_lower.split(" in ", 1)[1]
+                location = location_part.replace("?", "").strip()
+            elif " for " in command_lower:
+                location_part = command_lower.split(" for ", 1)[1]
+                location = location_part.replace("?", "").strip()
+            
+            result = handle_weather_command(location)
+            return speak_response(result)
+                        
+        # Everything else goes to Ollama for conversation (streaming with real-time speech)
+        result = handle_ollama_query(text_command)
+        # Note: Ollama responses are already spoken during streaming
+        return result
+        
+    finally:
+        is_processing = False
 
 # --- Flask Server ---
 flask_app = Flask(__name__)
@@ -344,6 +329,15 @@ def home():
         "status": "online",
         "app": APP_NAME,
         "version": APP_VERSION
+    })
+
+@flask_app.route('/status', methods=['GET'])
+def status():
+    return jsonify({
+        "status": "online",
+        "is_speaking": is_speaking,
+        "is_processing": is_processing,
+        "ready_for_command": not is_speaking and not is_processing
     })
 
 @flask_app.route('/command', methods=['POST'])
@@ -428,6 +422,7 @@ class JulieJulieRumpsApp(rumps.App):
             super(JulieJulieRumpsApp, self).run()
         finally:
             logger.info(f"{APP_NAME} is shutting down.")
+            cleanup_ollama()
 
 if __name__ == '__main__':
     app = JulieJulieRumpsApp()

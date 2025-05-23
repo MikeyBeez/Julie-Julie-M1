@@ -9,6 +9,7 @@ import os
 import json
 from typing import Optional, Dict, Any
 import tempfile
+from handlers.voice_control_manager import managed_speech
 
 logger = logging.getLogger('julie_julie')
 
@@ -77,8 +78,9 @@ class TTSManager:
                 tmp_file.write(response.audio_content)
                 tmp_path = tmp_file.name
             
-            # Play the audio file
-            subprocess.run(['afplay', tmp_path], check=True)
+            # Play the audio file with Voice Control management
+            with managed_speech():
+                subprocess.run(['afplay', tmp_path], check=True)
             
             # Clean up
             os.unlink(tmp_path)
@@ -96,8 +98,15 @@ class TTSManager:
     def _say_fallback(self, text: str, voice: str = "Alex") -> bool:
         """Use macOS say command as fallback."""
         try:
-            subprocess.run(['say', '-v', voice, text], check=True)
-            logger.info(f"Say fallback successful for: {text[:50]}...")
+            # Use managed speech context to prevent Voice Control feedback
+            with managed_speech():
+                result = subprocess.run(
+                    ['say', '-v', voice, text], 
+                    check=True, 
+                    stdout=subprocess.DEVNULL, 
+                    stderr=subprocess.DEVNULL,
+                    text=True
+                )
             return True
         except subprocess.CalledProcessError as e:
             logger.error(f"Say command failed: {e}")
