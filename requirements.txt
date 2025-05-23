@@ -3,6 +3,7 @@ rumps>=0.4.0
 requests>=2.25.0
 SpeechRecognition>=3.8.1
 PyAudio>=0.2.11
+google-cloud-texttospeech>=2.14.0
 
 # Testing dependencies
 pytest>=7.0.0

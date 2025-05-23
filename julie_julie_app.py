@@ -17,6 +17,7 @@ from handlers.spotify_handler import handle_spotify_command
 from handlers.visualizer_handler import handle_visualizer_command
 from handlers.radio_handler import handle_radio_command
 from handlers.audio_handler import handle_audio_command
+from handlers.tts_handler import speak_text, handle_tts_command
 
 # --- Configuration ---
 APP_NAME = "Julie Julie"
@@ -171,7 +172,7 @@ def handle_ollama_query(user_query):
                                         if complete_sentence:
                                             logger.info(f"Speaking sentence: {complete_sentence}")
                                             # Speak the sentence immediately
-                                            subprocess.run(["say", complete_sentence], check=True)
+                                            speak_text(complete_sentence)
                                         
                                         # Keep remainder for next sentence
                                         sentence_buffer = sentence_buffer[sentence_end:].strip()
@@ -182,7 +183,7 @@ def handle_ollama_query(user_query):
                             # Speak any remaining text
                             if sentence_buffer.strip():
                                 logger.info(f"Speaking final fragment: {sentence_buffer.strip()}")
-                                subprocess.run(["say", sentence_buffer.strip()], check=True)
+                                speak_text(sentence_buffer.strip())
                             break
                             
                     except json.JSONDecodeError:
@@ -220,16 +221,23 @@ def process_command_from_user(text_command):
     logger.info(f"Processing command: {text_command}")
     command_lower = text_command.lower().strip()
     
+    # Try TTS handler first (for voice control commands)
+    tts_result = handle_tts_command(text_command)
+    if tts_result:
+        # It's a TTS command - speak immediately
+        spoken_response = tts_result["spoken_response"]
+        if spoken_response:
+            logger.info(f"TTS command: {spoken_response}")
+            speak_text(spoken_response)
+        return tts_result
+    
     # Time commands
     if any(word in command_lower for word in ["time", "clock"]):
         result = handle_time_command()
         # Speak time responses immediately since they're not streamed
         spoken_response = result["spoken_response"]
         if spoken_response:
-            try:
-                subprocess.run(["say", spoken_response], check=True)
-            except Exception as e:
-                logger.error(f"Error during 'say' command: {e}")
+            speak_text(spoken_response)
         return result
     
     # Try calculation handler first (for simple math)
@@ -239,10 +247,7 @@ def process_command_from_user(text_command):
         spoken_response = calc_result["spoken_response"]
         if spoken_response:
             logger.info(f"Quick calculation: {spoken_response}")
-            try:
-                subprocess.run(["say", spoken_response], check=True)
-            except Exception as e:
-                logger.error(f"Error during calculation speech: {e}")
+            speak_text(spoken_response)
         return calc_result
         
     # Try visualizer handler
@@ -252,10 +257,7 @@ def process_command_from_user(text_command):
         spoken_response = viz_result["spoken_response"]
         if spoken_response:
             logger.info(f"Visualizer command: {spoken_response}")
-            try:
-                subprocess.run(["say", spoken_response], check=True)
-            except Exception as e:
-                logger.error(f"Error during visualizer speech: {e}")
+            speak_text(spoken_response)
         return viz_result
         
     # Try Spotify handler (for "Spotify" commands)
@@ -265,10 +267,7 @@ def process_command_from_user(text_command):
         spoken_response = spotify_result["spoken_response"]
         if spoken_response:
             logger.info(f"Spotify command: {spoken_response}")
-            try:
-                subprocess.run(["say", spoken_response], check=True)
-            except Exception as e:
-                logger.error(f"Error during Spotify speech: {e}")
+            speak_text(spoken_response)
         return spotify_result
             
     # Try Apple Music handler (for "Apple" commands)
@@ -278,10 +277,7 @@ def process_command_from_user(text_command):
         spoken_response = apple_result["spoken_response"]
         if spoken_response:
             logger.info(f"Apple Music command: {spoken_response}")
-            try:
-                subprocess.run(["say", spoken_response], check=True)
-            except Exception as e:
-                logger.error(f"Error during Apple Music speech: {e}")
+            speak_text(spoken_response)
         return apple_result
                 
     # Try YouTube handler
@@ -291,10 +287,7 @@ def process_command_from_user(text_command):
         spoken_response = youtube_result["spoken_response"]
         if spoken_response:
             logger.info(f"YouTube command: {spoken_response}")
-            try:
-                subprocess.run(["say", spoken_response], check=True)
-            except Exception as e:
-                logger.error(f"Error during YouTube speech: {e}")
+            speak_text(spoken_response)
         return youtube_result
                     
     # Try radio handler
@@ -304,10 +297,7 @@ def process_command_from_user(text_command):
         spoken_response = radio_result["spoken_response"]
         if spoken_response:
             logger.info(f"Radio command: {spoken_response}")
-            try:
-                subprocess.run(["say", spoken_response], check=True)
-            except Exception as e:
-                logger.error(f"Error during radio speech: {e}")
+            speak_text(spoken_response)
         return radio_result
                     
     # Try audio handler
@@ -317,10 +307,7 @@ def process_command_from_user(text_command):
         spoken_response = audio_result["spoken_response"]
         if spoken_response:
             logger.info(f"Audio command: {spoken_response}")
-            try:
-                subprocess.run(["say", spoken_response], check=True)
-            except Exception as e:
-                logger.error(f"Error during audio speech: {e}")
+            speak_text(spoken_response)
         return audio_result
                     
     # Weather commands
@@ -339,11 +326,8 @@ def process_command_from_user(text_command):
         spoken_response = result["spoken_response"]
         if spoken_response:
             logger.info(f"About to speak weather: '{spoken_response}'")
-            try:
-                subprocess.run(["say", spoken_response], check=True)
-                logger.info("Weather speech completed successfully")
-            except Exception as e:
-                logger.error(f"Error during weather 'say' command: {e}")
+            speak_text(spoken_response)
+            logger.info("Weather speech completed successfully")
         return result
                     
     # Everything else goes to Ollama for conversation (streaming with real-time speech)

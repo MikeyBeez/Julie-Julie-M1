@@ -31,6 +31,7 @@ You can interact with Julie Julie through:
 - ✅ Visualizer commands - working
 - ✅ Ollama integration - streaming AI conversations with real-time speech
 - ✅ Opening websites - working
+- ✅ **Text-to-Speech**: Google Cloud TTS with automatic fallback to macOS say
 
 ## Installation
 
@@ -60,7 +61,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-4. Configure Voice Control (for voice activation):
+4. Optional: Set up Google Cloud TTS (for better voice quality)
+   - Create a Google Cloud project and enable the Text-to-Speech API
+   - Download service account credentials JSON file
+   - Set environment variable: `export GOOGLE_APPLICATION_CREDENTIALS="/path/to/credentials.json"`
+   - Or use gcloud: `gcloud auth application-default login`
+   - Note: Julie Julie will automatically fall back to macOS `say` command if Google TTS isn't available
+
+5. Configure Voice Control (for voice activation):
    - Open System Preferences → Accessibility → Voice Control
    - Enable Voice Control
    - Click "Commands" → "+"
@@ -68,7 +76,7 @@ pip install -r requirements.txt
      - When I say: "Julie Julie"
      - Action: Run Shortcut → "Activate Julie Julie" (create this shortcut in step 5)
 
-5. Create the "Activate Julie Julie" shortcut:
+6. Create the "Activate Julie Julie" shortcut:
    - Open the Shortcuts app
    - Create a new shortcut named "Activate Julie Julie"
    - Add an "Ask for Text" action:
@@ -176,6 +184,7 @@ Julie Julie understands a variety of commands, including:
 - **Conversations**: "Tell me about quantum physics" or "Who is Marie Curie?"
 - **Web Search**: "Search for chocolate chip cookie recipes"
 - **Open Websites**: "Open github.com"
+- **TTS Control**: "Use Google voice", "Switch to local voice", "TTS status", "Test voice"
 - **Help**: "What can you do?" or "Help"
 
 ## Testing
@@ -234,8 +243,8 @@ Julie Julie consists of several components:
 1. **Menu Bar App** (using `rumps`): Provides a GUI interface in macOS
 2. **Flask Web Server**: Handles HTTP requests including API endpoints
 3. **Command Handlers**: Process different types of user requests
-4. **Speech-to-Text**: Converts audio to text using Google's speech recognition
-5. **Text-to-Speech**: Uses macOS built-in 'say' command
+4. **TTS Manager**: Handles Google Cloud TTS with automatic fallback to macOS say
+5. **Speech-to-Text**: Converts audio to text using Google's speech recognition (when needed)
 
 The application flow is:
 1. User makes a request (via voice, menu, or API)
